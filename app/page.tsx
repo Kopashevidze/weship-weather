@@ -1,65 +1,104 @@
-import Image from "next/image";
+'use client'
+
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+
+interface WeatherData {
+  temperature: number
+}
+
+const DROPS = Array.from({ length: 60 }, (_, i) => {
+  const seed = (i * 7919 + 1234) % 1000
+  return {
+    left: seed % 100,
+    duration: 0.6 + ((seed * 3) % 1000) / 1000,
+    delay: -((seed * 13) % 2000) / 1000,
+    height: 8 + (seed % 10),
+    opacity: 0.2 + ((seed * 7) % 60) / 100,
+  }
+})
+
+function RainLayer() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl">
+      {DROPS.map((drop, i) => (
+        <div
+          key={i}
+          className="absolute w-px rounded-full bg-white"
+          style={{
+            left: `${drop.left}%`,
+            top: 0,
+            height: `${drop.height}px`,
+            opacity: drop.opacity,
+            animation: `rain-fall ${drop.duration}s ${drop.delay}s linear infinite`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 export default function Home() {
+  const [temperature, setTemperature] = useState<number | null>(null)
+  const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          'https://api.open-meteo.com/v1/forecast?latitude=68.2&longitude=14.4&current=temperature_2m&timezone=Europe%2FOslo'
+        )
+        const data = await res.json()
+        setTemperature(Math.round(data.current.temperature_2m))
+      } catch {
+        // silently retry on next mount
+      }
+    }
+    fetchWeather()
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const timeStr = time.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="relative w-[400px] h-[400px] rounded-3xl overflow-hidden shadow-2xl">
+
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
+          src="/lofoten.png"
+          alt="Lofoten landscape"
+          fill
+          className="object-cover"
           priority
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        <RainLayer />
+
+        <div className="absolute inset-0 p-7 flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-white font-semibold text-lg leading-snug drop-shadow">Today</p>
+              <p className="text-white/80 text-base leading-snug drop-shadow">{timeStr}</p>
+            </div>
+            <p className="text-white font-bold text-7xl leading-none drop-shadow">
+              {temperature !== null ? `${temperature}°` : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-white font-bold text-2xl leading-tight drop-shadow">Lofoten</p>
+            <p className="text-white/80 text-lg leading-tight drop-shadow">Norway</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+
+      </div>
+    </main>
+  )
 }
